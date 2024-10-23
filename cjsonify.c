@@ -48,15 +48,19 @@ static struct cjson_buffer* make_cjson_buffer(void)
     if (buffer == NULL)
         return NULL;
     buffer->buf = malloc(sizeof(char) * BASE_cjson_BUFFER_SIZE);
+    if (buffer->buf == NULL) {
+        free(buffer);
+        return NULL;
+    }
     buffer->used = 0;
-    buffer->allocated = 0;
+    buffer->allocated = BASE_cjson_BUFFER_SIZE;
     return buffer;
 }
 
 static bool append_cjson_buffer(struct cjson_buffer* buf, char const* bytes, size_t len)
 {
     if (buf->used + len >= buf->allocated) {
-        buf->allocated = buf->used + len + BASE_cjson_BUFFER_SIZE;
+        buf->allocated = buf->allocated + ((len + buf->used) / BASE_cjson_BUFFER_SIZE + 1) * BASE_cjson_BUFFER_SIZE;
         buf->buf = realloc(buf->buf, buf->allocated);
         if (buf->buf == NULL) {
             return false;
@@ -96,6 +100,7 @@ static bool cjson_buffer_stringify_number(struct cjson_buffer* buf, struct cjson
     const int len = snprintf(tmp, 64, "%f", cjson->v.f);
     return len < 0 ? false : append_cjson_buffer(buf, tmp, len);
 }
+
 static bool cjson_buffer_stringify_string(struct cjson_buffer* buf, struct cjson* cjson)
 {
     char tmp[2] = { 0 };
@@ -154,10 +159,10 @@ static bool cjson_buffer_stringify_object(struct cjson_buffer* buf, struct cjson
             if (once && append_cjson_buffer(buf, ",", 1) == false)
                 return false;
             once = true;
-            append_cjson_buffer(buf, "\"", 1);
-            append_cjson_buffer(buf, bucket->t.key, strlen(bucket->t.key));
-            append_cjson_buffer(buf, "\":", 2);
-            if (cjson_buffer_stringify_value(buf, &bucket->t.v) == false)
+            if (append_cjson_buffer(buf, "\"", 1) == false ||
+                append_cjson_buffer(buf, bucket->t.key, strlen(bucket->t.key) == false ||
+                append_cjson_buffer(buf, "\":", 2) == false ||
+                cjson_buffer_stringify_value(buf, &bucket->t.v) == false)
                 return false;
         }
     }
@@ -180,7 +185,7 @@ char* stringify(struct cjson* cjson)
 
     if (buffer == NULL)
         return NULL;
-    if (cjson_buffer_stringify_value(buffer, cjson) == false) {
+    if (cjson_buffer_stringify_value(buffer, cjson) == false || append_cjson_buffer(buf, "\0", 1) == false) {
         destroy_cjson_buffer(buffer);
         return NULL;
     }

@@ -22,18 +22,18 @@
 bool cjson_parse_boolean(struct cjson* cjson, struct cjson_parser_info* parser)
 {
     cjson_skip_withespaces(parser);
-    if (strncmp(parser->buf + parser->index, "true", 4) != 0) {
-        if (strncmp(parser->buf + parser->index, "false", 5) != 0) {
-            return false;
-        }
+    if (strncmp(parser->buf + parser->index, "true", 4) == 0) {
+        parser->index += 4;
+        parser->col += 4;
+        cjson->v.b = true;
+        cjson->t = cjson_BOOL;
+        return true;
+    } else if (strncmp(parser->buf + parser->index, "false", 5) == 0) {
         parser->index += 5;
         parser->col += 5;
         cjson->v.b = false;
         cjson->t = cjson_BOOL;
+        return true;
     }
-    parser->index += 4;
-    parser->col += 4;
-    cjson->v.b = true;
-    cjson->t = cjson_BOOL;
-    return true;
+    return false;
 }
